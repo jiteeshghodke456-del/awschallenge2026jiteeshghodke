@@ -12,6 +12,8 @@ const newIdeaButton = document.querySelector('.secondary-button');
 const generateAnotherButton = document.querySelector('.ghost-button');
 const mutationButtons = [...document.querySelectorAll('.mutation-button')];
 
+const API_URL = window.PLOT_TWIST_API_URL || 'http://localhost:3000/generate';
+
 const promptIdeas = [
   'A student discovers that his laptop is secretly alive.',
   'A tiny bakery opens at midnight and starts serving memories.',
@@ -40,6 +42,10 @@ function clearError() {
   errorState.classList.add('hidden');
 }
 
+function renderEmptyState() {
+  storyOutput.innerHTML = '<p class="story-placeholder">Your story is waiting for a spark.</p>';
+}
+
 function enableMutationButtons() {
   mutationButtons.forEach((button) => {
     button.disabled = false;
@@ -56,20 +62,6 @@ function disableMutationButtons() {
   });
 }
 
-function buildMockStory(idea, genre, length, chaos) {
-  const lengthMap = {
-    short: 'A short, sharp little tale',
-    medium: 'A medium-length story with a twist',
-    long: 'A longer story full of restless detail'
-  };
-
-  const opening = `${lengthMap[length]} in a ${genre} mood begins when ${idea.toLowerCase()}`;
-  const chaosFlavor = chaos >= 8 ? 'everything gets more ridiculous and dangerous' : chaos >= 5 ? 'the situation becomes strange and unstable' : 'the strange truth starts to spread';
-  const ending = chaos >= 8 ? 'The world ends in a glittering, impossible way, and everyone pretends it was always meant to happen.' : chaos >= 5 ? 'The truth is revealed at the exact worst possible moment, and no one is prepared.' : 'The problem is solved, but only after everyone learns something they should not have known.';
-
-  return `${opening}. The problem grows worse because ${chaosFlavor}. By the final act, the protagonist realizes the real secret is not the weird object or creature at all, but the kind of person they have become. ${ending}`;
-}
-
 function renderStory(storyText) {
   currentStory = storyText;
   storyOutput.innerHTML = `
@@ -78,34 +70,72 @@ function renderStory(storyText) {
   `;
 }
 
-function applyMutation(mutationText) {
-  if (!currentStory) {
-    setError('Generate a story first before mutating it.');
-    return;
+function getMutationKey(label) {
+  const map = {
+    'Make It Darker': 'darker',
+    'Make It Funnier': 'funnier',
+    'Add a Plot Twist': 'twist',
+    'Make It Absurd': 'absurd',
+    'Turn It Into Sci‑Fi': 'scifi',
+    'Change the Ending': 'ending'
+  };
+
+  return map[label] || 'generate';
+}
+
+async function sendToBackend(payload) {
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error || 'The backend could not generate a story.');
   }
 
-  const mutatedStory = `${currentStory} ${mutationText}`;
-  renderStory(mutatedStory);
-  clearError();
+  if (!data.story || typeof data.story !== 'string') {
+    throw new Error('The backend returned an invalid story response.');
+  }
+
+  return data.story;
 }
 
 mutationButtons.forEach((button) => {
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
     const label = button.textContent.trim();
-    const mutationMessages = {
-      'Make It Darker': 'Then the moon turned black and the town realized it had been haunted by its own mistakes.',
-      'Make It Funnier': 'Suddenly every character started speaking in ridiculous rhymes and nobody could stop laughing long enough to be afraid.',
-      'Add a Plot Twist': 'The whole time, the real villain was the narrator, who had been editing the story in secret.',
-      'Make It Absurd': 'A parade of sentient umbrellas marched across the sky while the hero tried to negotiate with a vending machine god.',
-      'Turn It Into Sci‑Fi': 'The impossible event was actually a malfunctioning wormhole created by a student lab experiment that should never have been funded.',
-      'Change the Ending': 'Instead of victory, the main character walked away with a new identity, a broken compass, and a deeply suspicious cat.'
-    };
 
-    applyMutation(mutationMessages[label] || 'The story changed in a dramatic but mysterious way.');
+    if (!currentStory) {
+      setError('Generate a story first before mutating it.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      clearError();
+
+      const story = await sendToBackend({
+        storyIdea: currentStory,
+        genre: genreSelect.value,
+        length: lengthSelect.value,
+        chaos: Number(chaosInput.value),
+        transformation: getMutationKey(label)
+      });
+
+      renderStory(story);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
   });
 });
 
-form.addEventListener('submit', (event) => {
+form.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const storyIdea = ideaInput.value.trim();
@@ -115,15 +145,25 @@ form.addEventListener('submit', (event) => {
     return;
   }
 
-  clearError();
-  setLoading(true);
+  try {
+    clearError();
+    setLoading(true);
 
-  setTimeout(() => {
-    const story = buildMockStory(storyIdea, genreSelect.value, lengthSelect.value, Number(chaosInput.value));
+    const story = await sendToBackend({
+      storyIdea,
+      genre: genreSelect.value,
+      length: lengthSelect.value,
+      chaos: Number(chaosInput.value),
+      transformation: 'generate'
+    });
+
     renderStory(story);
     enableMutationButtons();
+  } catch (error) {
+    setError(error.message);
+  } finally {
     setLoading(false);
-  }, 900);
+  }
 });
 
 newIdeaButton.addEventListener('click', () => {
@@ -140,3 +180,4 @@ chaosInput.addEventListener('input', updateChaosDisplay);
 
 updateChaosDisplay();
 disableMutationButtons();
+renderEmptyState();

@@ -37,6 +37,73 @@ function buildStory(idea, genre, length, chaos, transformation = 'generate') {
   return `${opening}. The problem grows worse because ${chaosFlavor}. ${transformText} ${ending}`;
 }
 
+let bedrockRuntime = null;
+
+try {
+  const bedrockModule = await import('@aws-sdk/client-bedrock-runtime');
+  bedrockRuntime = bedrockModule;
+} catch (error) {
+  bedrockRuntime = null;
+}
+
+async function generateWithBedrock(idea, genre, length, chaos, transformation) {
+  const shouldUseBedrock = process.env.USE_BEDROCK === 'true';
+  const hasAwsCreds = Boolean(
+    process.env.AWS_ACCESS_KEY_ID ||
+    process.env.AWS_PROFILE ||
+    process.env.AWS_SESSION_TOKEN ||
+    process.env.AWS_WEB_IDENTITY_TOKEN_FILE ||
+    process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI
+  );
+
+  if (!shouldUseBedrock || !hasAwsCreds || !bedrockRuntime?.BedrockRuntimeClient || !bedrockRuntime?.InvokeModelCommand) {
+    return buildStory(idea, genre, length, chaos, transformation);
+  }
+
+  const modelId = process.env.BEDROCK_MODEL_ID || 'us.amazon.nova-lite-v1:0';
+  const region = process.env.AWS_REGION || 'us-east-1';
+
+  const client = new bedrockRuntime.BedrockRuntimeClient({ region });
+  const prompt = `Write only the final story text. Do not explain the process.
+
+Story idea: ${idea}
+Genre: ${genre}
+Length: ${length}
+Chaos level: ${chaos}
+Requested transformation: ${transformation}
+
+Return a creative, original short story that follows the idea and style requested.`;
+
+  const payload = {
+    modelId,
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: JSON.stringify({
+      messages: [
+        { role: 'user', content: [{ text: prompt }] }
+      ],
+      inferenceConfig: {
+        max_new_tokens: 400,
+        temperature: 0.9,
+        top_p: 0.9
+      }
+    })
+  };
+
+  const command = new bedrockRuntime.InvokeModelCommand(payload);
+  const response = await client.send(command);
+  const raw = new TextDecoder().decode(response.body);
+  const parsed = JSON.parse(raw);
+
+  const text = parsed.output?.message?.content?.[0]?.text || parsed.content?.[0]?.text || parsed.completion || '';
+
+  if (!text || typeof text !== 'string' || text.trim().length === 0) {
+    throw new Error('Bedrock returned an empty story.');
+  }
+
+  return text.trim();
+}
+
 export const handler = async (event) => {
   try {
     const body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body || {});
@@ -57,7 +124,7 @@ export const handler = async (event) => {
       };
     }
 
-    const story = buildStory(idea, genre, length, chaos, transformation);
+    const story = await generateWithBedrock(idea, genre, length, chaos, transformation);
 
     return {
       statusCode: 200,
@@ -74,7 +141,7 @@ export const handler = async (event) => {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       },
-      body: JSON.stringify({ error: 'The generator failed. Please try again.' })
+      body: JSON.stringify({ error: error.message || 'The generator failed. Please try again.' })
     };
   }
 };
