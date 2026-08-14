@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plot Twist</title>
+    <meta
+      name="description"
+      content="Plot Twist is a creative story mutation tool that turns a simple premise into an original story."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <span class="brand-mark">✦</span>
+          <div>
+            <p class="eyebrow">Creative story generator</p>
+            <h1>Plot Twist</h1>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-layout">
+        <section class="panel generator-panel">
+          <p class="section-kicker">Start with a spark</p>
+          <h2>Build a story from one strange idea.</h2>
+
+          <form class="story-form" id="story-form">
+            <label class="field-label" for="story-idea">Story idea</label>
+            <textarea
+              id="story-idea"
+              name="story-idea"
+              rows="5"
+              placeholder="A student discovers that his laptop is secretly alive..."
+            ></textarea>
+
+            <div class="form-grid">
+              <div class="field-group">
+                <label class="field-label" for="genre">Genre</label>
+                <select id="genre" name="genre">
+                  <option value="fantasy">Fantasy</option>
+                  <option value="mystery">Mystery</option>
+                  <option value="horror">Horror</option>
+                  <option value="comedy">Comedy</option>
+                  <option value="sci-fi">Sci-Fi</option>
+                  <option value="romance">Romance</option>
+                </select>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label" for="length">Story length</label>
+                <select id="length" name="length">
+                  <option value="short">Short</option>
+                  <option value="medium">Medium</option>
+                  <option value="long">Long</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field-group range-group">
+              <div class="range-header">
+                <label class="field-label" for="chaos">Chaos level</label>
+                <span id="chaos-value">5</span>
+              </div>
+              <input id="chaos" name="chaos" type="range" min="1" max="10" value="5" />
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="primary-button">Generate Story</button>
+              <button type="button" class="secondary-button">New Idea</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel output-panel">
+          <div class="output-header">
+            <p class="section-kicker">Your result</p>
+            <button type="button" class="ghost-button">Generate Another Story</button>
+          </div>
+
+          <div class="status-stack">
+            <div class="loading-state hidden" id="loading-state">
+              <span class="spinner"></span>
+              <p>Plotting a strange little disaster...</p>
+            </div>
+
+            <div class="error-state hidden" id="error-state">
+              <p>Something went wrong. Try a different story idea or a lower chaos level.</p>
+            </div>
+          </div>
+
+          <article class="story-card" id="story-output">
+            <p class="story-placeholder">
+              A story will appear here once you hit generate. It might be funny, creepy, cosmic,
+              or wildly impossible.
+            </p>
+          </article>
+
+          <div class="mutation-panel">
+            <p class="mutation-label">Mutate the story</p>
+            <div class="mutation-grid">
+              <button type="button" class="mutation-button" disabled>Make It Darker</button>
+              <button type="button" class="mutation-button" disabled>Make It Funnier</button>
+              <button type="button" class="mutation-button" disabled>Add a Plot Twist</button>
+              <button type="button" class="mutation-button" disabled>Make It Absurd</button>
+              <button type="button" class="mutation-button" disabled>Turn It Into Sci‑Fi</button>
+              <button type="button" class="mutation-button" disabled>Change the Ending</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
